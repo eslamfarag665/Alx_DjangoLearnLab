@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Member View</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+    <h1>Member View</h1>
+    <p>Welcome to the member view. This page is accessible to all authenticated users.</p>
+    <a href="{% url 'list_books' %}">Back to Book List</a>
+</body>
+</html>
