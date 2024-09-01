@@ -1,0 +1,11 @@
+# Virtual Environment
+virtualdj/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Database
+*.sqlite3
+
+
