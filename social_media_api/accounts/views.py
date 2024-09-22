@@ -1,73 +1,44 @@
+from django.shortcuts import render
+from rest_framework import generics, permissions, status
 from rest_framework.authtoken.models import Token
-from django.contrib.auth import authenticate
-from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import generics, status, serializers
 from .models import CustomUser
-from .serializers import CustomUserSerializer
-from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import get_object_or_404
+from .serializers import UserSerializer, UserLoginSerializer
 
 
+# Create your views here.
 class RegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
-    serializer_class = CustomUserSerializer
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        try:
-            serializer.is_valid(raise_exception=True)
-            user = serializer.save()
-            token, _ = Token.objects.get_or_create(user=user)  # Get or create token
-            return Response({"user": serializer.data, "token": token.key})
-        except serializers.ValidationError as e:
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-
+    serializer_class = UserSerializer
 
 class LoginView(generics.GenericAPIView):
-    serializer_class = CustomUserSerializer
-    permission_classes = [IsAuthenticated]
+    serializer_class = UserLoginSerializer
 
     def post(self, request, *args, **kwargs):
-        username = request.data.get('username')
-        password = request.data.get('password')
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.validated_data)
+    
+# Follow a user
+class FollowUserView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
 
-        user = authenticate(username=username, password=password)
-        if user:
-            token, _ = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key})
-        else:
-            return Response({'error': 'Invalid credentials'}, status=400)
-        
+    def post(self, request, user_id):
+        try:
+            user_to_follow = CustomUser.objects.get(id=user_id)
+            request.user.following.add(user_to_follow)
+            return Response({'message': 'Successfully followed.'}, status=200)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=404)
 
-# permissions.IsAuthenticated
-class ProfileView(generics.RetrieveUpdateAPIView):
-    queryset = CustomUser.objects.all()
-    serializer_class = CustomUserSerializer
-    permission_classes = [IsAuthenticated]
+# Unfollow a user
+class UnfollowUserView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
 
-    def get_object(self):
-        return self.request.user
-
-
-class FollowUserView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self,request,username):
-
-        target_user = get_object_or_404(CustomUser,username=username)
-
-        request.user.following.add(target_user)
-        return Response({"message": f'you are now following {target_user.username}'})
-
-class UnfollowUserView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, username):
-        # Get the user to be unfollowed
-        target_user = get_object_or_404(CustomUser, username=username)
-        
-        # Remove target_user from the current user's following list
-        request.user.following.remove(target_user)
-
-        return Response({"message": f"You have unfollowed {target_user.username}"})
+    def post(self, request, user_id):
+        try:
+            user_to_unfollow = CustomUser.objects.get(id=user_id)
+            request.user.following.remove(user_to_unfollow)
+            return Response({'message': 'Successfully unfollowed.'}, status=200)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=404)
